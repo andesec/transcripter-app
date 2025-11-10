@@ -26,19 +26,14 @@ Transform your audio into text, summaries, and notes. This is a unified applicat
       HUGGING_FACE_API_URL="YOUR_HUGGING_FACE_API_URL_HERE"
       ```
 
-3.  **Build the Docker image**:
+3.  **Run the application with Docker Compose**:
     - Open your terminal, navigate to the `transcripter` directory, and run:
       ```bash
-      docker build -t transcripter-app .
+      docker-compose up --build
       ```
+    - The application will be built and started. The `--build` flag is only necessary the first time or after code changes.
 
-4.  **Run the Docker container**:
-    - After the build is complete, run the container with:
-      ```bash
-      docker run -p 8501:8501 -p 8000:8000 transcripter-app
-      ```
-
-5.  **Access the application**:
+4.  **Access the application**:
     - Open your web browser and go to `http://localhost:8501`.
     - The API documentation is available at `http://localhost:8000/docs`.
 
