@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+pip-selfcheck.json
+pip-log.txt
+pip-delete-this-directory.txt
+dist/
+build/
+*.egg-info/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytest_cache/
+.hypothesis/
+
+# Docker
+.dockerignore
+
+# Environment
+.env
