@@ -42,58 +42,112 @@ def main():
         "Powered by Hugging Face and Gemini."
     )
 
+    # Initialize session state variables
+    if "uploaded_file" not in st.session_state:
+        st.session_state.uploaded_file = None
+    if "transcription" not in st.session_state:
+        st.session_state.transcription = ""
+    if "category" not in st.session_state:
+        st.session_state.category = "meeting"
+    if "results" not in st.session_state:
+        st.session_state.results = None
+
     with st.sidebar:
         st.header("Controls")
-        uploaded_file = st.file_uploader(
+        st.session_state.uploaded_file = st.file_uploader(
             "Upload your audio file",
             type=["wav", "mp3", "m4a"]
         )
-        category = st.selectbox(
+        st.session_state.category = st.selectbox(
             "Select the audio category",
             ("meeting", "conversation", "study lecture", "fiction", "think aloud"),
             help="Select the category that best describes your audio to get a better summary."
         )
-        submit_button = st.button("Generate Insights", type="primary")
+
+        transcribe_button = st.button("Transcribe Audio", type="primary", disabled=st.session_state.uploaded_file is None)
+        summarize_button = st.button("Generate Summary & Notes", disabled=st.session_state.transcription == "")
 
         st.markdown("---")
         if st.button("Reset"):
             st.session_state.clear()
             st.experimental_rerun()
 
-    if submit_button:
-        if uploaded_file is not None:
-            with st.spinner("🚀 Launching the AI magic... Please wait."):
-                try:
-                    files = {"audio_file": (uploaded_file.name, uploaded_file, uploaded_file.type)}
-                    params = {"category": category}
-                    
-                    st.info("Step 1/3: Uploading audio file...")
-                    response = requests.post(TRANSCRIPTION_SERVICE_URL, files=files, data=params, timeout=300)
-                    
-                    st.info("Step 2/3: Analyzing response...")
-                    response.raise_for_status()
-                    
-                    st.info("Step 3/3: Generating results...")
-                    data = response.json()
-                    
-                    st.success("✅ Success! Here are your results.")
-                    st.toast("Processing complete!", icon="🎉")
-                    display_results(data)
+    # Determine if an external transcription service is configured
+    is_external_transcription_service = TRANSCRIPTION_SERVICE_URL.startswith("http") and "fastapi_app" not in TRANSCRIPTION_SERVICE_URL
 
-                except requests.exceptions.Timeout as e:
-                    display_error("The request timed out after 5 minutes", e)
-                except requests.exceptions.HTTPError as e:
-                    if e.response.status_code == 422:
-                        display_error("The AI service failed to process the content", e)
-                    else:
-                        display_error(f"A server error occurred (Code: {e.response.status_code})", e)
-                except requests.exceptions.RequestException as e:
-                    display_error("Failed to connect to the backend service", e)
-                except Exception as e:
-                    display_error("An unexpected error occurred", e)
-        else:
-            st.warning("Please upload an audio file first.")
-            st.toast("No file selected.", icon="⚠️")
+    if transcribe_button and st.session_state.uploaded_file is not None:
+        with st.spinner("🚀 Launching the AI magic... Please wait."):
+            try:
+                files = {"audio_file": (st.session_state.uploaded_file.name, st.session_state.uploaded_file, st.session_state.uploaded_file.type)}
+                
+                st.info("Step 1/3: Uploading audio file and transcribing...")
+                
+                if is_external_transcription_service:
+                    # Call external transcription service directly
+                    response = requests.post(TRANSCRIPTION_SERVICE_URL, files=files, timeout=300)
+                else:
+                    # Call local FastAPI for transcription
+                    response = requests.post(f"{API_URL}/transcribe", files=files, data={"category": st.session_state.category}, timeout=300)
+                
+                response.raise_for_status()
+                
+                st.info("Step 2/3: Analyzing response...")
+                data = response.json()
+                
+                if is_external_transcription_service:
+                    # If external service, it only returns transcription
+                    st.session_state.transcription = data.get("transcription", "")
+                    st.success("✅ Transcription complete! Now generate summary and notes.")
+                else:
+                    # If local FastAPI, it returns transcription, summary, and notes
+                    st.session_state.transcription = data.get("transcription", "")
+                    st.session_state.results = data
+                    st.success("✅ Transcription, summary, and notes complete!")
+                
+                st.toast("Processing complete!", icon="🎉")
+
+            except requests.exceptions.Timeout as e:
+                display_error("The request timed out after 5 minutes", e)
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 422:
+                    display_error("The AI service failed to process the content", e)
+                else:
+                    display_error(f"A server error occurred (Code: {e.response.status_code})", e)
+            except requests.exceptions.RequestException as e:
+                display_error("Failed to connect to the backend service", e)
+            except Exception as e:
+                display_error("An unexpected error occurred", e)
+
+    if summarize_button and st.session_state.transcription != "":
+        with st.spinner("✨ Generating summary and notes..."):
+            try:
+                st.info("Step 3/3: Generating summary and notes...")
+                response = requests.post(
+                    f"{API_URL}/summarize_and_notes",
+                    data={"transcribed_text": st.session_state.transcription, "category": st.session_state.category},
+                    timeout=300
+                )
+                response.raise_for_status()
+                st.session_state.results = response.json()
+                st.success("✅ Summary and notes complete!")
+                st.toast("Processing complete!", icon="🎉")
+            except requests.exceptions.Timeout as e:
+                display_error("The request timed out after 5 minutes", e)
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 422:
+                    display_error("The AI service failed to process the content", e)
+                else:
+                    display_error(f"A server error occurred (Code: {e.response.status_code})", e)
+            except requests.exceptions.RequestException as e:
+                display_error("Failed to connect to the backend service", e)
+            except Exception as e:
+                display_error("An unexpected error occurred", e)
+
+    if st.session_state.results:
+        display_results(st.session_state.results)
+    elif st.session_state.transcription:
+        st.subheader("📝 Transcription")
+        st.text_area("Full transcription text", st.session_state.transcription, height=250)
 
 if __name__ == "__main__":
     main()
