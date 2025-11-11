@@ -12,6 +12,7 @@ RUN uv pip install --system --no-cache-dir -r requirements.txt
 
 # Copy the application source code
 COPY src/ ./src/
+COPY static/ ./static/
 
 # Copy the .env file
 COPY .env .

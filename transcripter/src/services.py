@@ -37,7 +37,7 @@ def transcribe_audio_with_huggingface(audio_file: UploadFile):
         response = requests.post(HUGGING_FACE_API_URL, files=files, timeout=120)
         response.raise_for_status()
         logger.info("Received successful response from Hugging Face API.")
-        return response.json().get("text")
+        return response.json()
     except requests.exceptions.Timeout:
         logger.error("Request to Hugging Face API timed out.")
         raise HTTPException(status_code=504, detail="Request to transcription service timed out.")
