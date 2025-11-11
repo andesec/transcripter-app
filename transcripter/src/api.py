@@ -65,7 +65,11 @@ async def transcribe_and_summarize(
                 files={"file": (file.filename, audio_content, file.content_type)}
             )
             response.raise_for_status() # Raise an exception for HTTP errors
-            transcription_data = response.json()
+            try:
+                transcription_data = response.json()
+            except json.JSONDecodeError:
+                raise HTTPException(status_code=500, detail="Transcription service returned invalid JSON.")
+            
             transcribed_text = transcription_data.get("transcription")
 
         if not transcribed_text:
