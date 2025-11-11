@@ -2,7 +2,7 @@ import logging
 import os
 import ssl
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Iterable, Optional
 from urllib.parse import urlparse, urlunparse
 
 import httpx
@@ -40,6 +40,47 @@ def _fallback_to_http(url: str) -> Optional[str]:
         return None
 
     return urlunparse(parsed._replace(scheme="http"))
+
+
+async def _attempt_transcription(
+    file_field: Dict[str, tuple],
+    endpoints: Iterable[str],
+) -> Dict[str, Any]:
+    """Try each endpoint until one succeeds or raise an informative HTTPException."""
+
+    last_request_error: Optional[Exception] = None
+
+    async with httpx.AsyncClient(verify=False) as client:  # Disable SSL verification for local development
+        for endpoint in endpoints:
+            try:
+                logger.info("Attempting transcription via %s", endpoint)
+                response = await client.post(endpoint, files=file_field)
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as http_error:
+                # The service responded but returned an error status. Surface the details immediately.
+                detail = http_error.response.text
+                raise HTTPException(
+                    status_code=http_error.response.status_code,
+                    detail=f"Transcription service error: {detail}",
+                ) from http_error
+            except (httpx.RequestError, ssl.SSLError) as request_error:
+                last_request_error = request_error
+                logger.warning(
+                    "Request to transcription service at %s failed: %s", endpoint, request_error
+                )
+                continue
+
+    if last_request_error is not None:
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Unable to reach the transcription service. "
+                "Ensure the service is reachable over HTTP or HTTPS."
+            ),
+        ) from last_request_error
+
+    raise HTTPException(status_code=502, detail="Transcription service is unavailable.")
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
@@ -84,33 +125,22 @@ async def transcribe_audio(
         transcription_endpoint = _build_transcription_endpoint(TRANSCRIPTION_SERVICE_URL_BASE)
 
         # Forward the audio file to the external transcription service
-        async with httpx.AsyncClient(verify=False) as client:  # Disable SSL verification for local development
-            try:
-                response = await client.post(
-                    transcription_endpoint,
-                    files={"file": (file.filename, audio_content, file.content_type)}
-                )
-                response.raise_for_status()  # Raise an exception for HTTP errors
-            except (httpx.UnsupportedProtocol, httpx.LocalProtocolError, ssl.SSLError) as protocol_error:
-                fallback_endpoint = _fallback_to_http(transcription_endpoint)
-                if not fallback_endpoint:
-                    raise protocol_error
+        file_field = {
+            "file": (
+                file.filename or "audio",
+                audio_content,
+                file.content_type or "application/octet-stream",
+            )
+        }
 
-                logger.warning(
-                    "HTTPS request to %s failed (%s). Retrying over HTTP at %s.",
-                    transcription_endpoint,
-                    protocol_error,
-                    fallback_endpoint,
-                )
-                response = await client.post(
-                    fallback_endpoint,
-                    files={"file": (file.filename, audio_content, file.content_type)}
-                )
-                response.raise_for_status()
+        endpoints = [transcription_endpoint]
+        fallback_endpoint = _fallback_to_http(transcription_endpoint)
+        if fallback_endpoint:
+            endpoints.append(fallback_endpoint)
 
-            transcription_data = response.json()
-            transcribed_text = transcription_data.get("transcription")
-            print(7, transcribed_text)
+        transcription_data = await _attempt_transcription(file_field, endpoints)
+        transcribed_text = transcription_data.get("transcription")
+
         if not transcribed_text:
             raise HTTPException(status_code=500, detail="Transcription service did not return text.")
         print(8)
