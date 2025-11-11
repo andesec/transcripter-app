@@ -34,6 +34,11 @@ TRANSCRIPTION_STATUS_POLL_INTERVAL = float(
 TRANSCRIPTION_STATUS_POLL_TIMEOUT = float(
     os.getenv("TRANSCRIPTION_STATUS_POLL_TIMEOUT", "120.0")
 )
+_raw_request_timeout = os.getenv("TRANSCRIPTION_REQUEST_TIMEOUT", "300.0")
+if _raw_request_timeout.strip().lower() == "none":
+    TRANSCRIPTION_REQUEST_TIMEOUT: Optional[float] = None
+else:
+    TRANSCRIPTION_REQUEST_TIMEOUT = float(_raw_request_timeout)
 
 _PROCESSING_STATUSES = {
     "pending",
@@ -198,14 +203,30 @@ async def _attempt_transcription(
 
     last_request_error: Optional[Exception] = None
 
-    async with httpx.AsyncClient(verify=False) as client:  # Disable SSL verification for local development
+    timeout = httpx.Timeout(
+        TRANSCRIPTION_REQUEST_TIMEOUT,
+        connect=10.0,
+    )
+
+    async with httpx.AsyncClient(
+        verify=False,
+        timeout=timeout,
+    ) as client:  # Disable SSL verification for local development
         for endpoint in endpoints:
             try:
                 logger.info("Attempting transcription via %s", endpoint)
                 response = await client.post(endpoint, files=file_field)
                 response.raise_for_status()
 
-                payload = response.json()
+                try:
+                    payload = response.json()
+                except ValueError:
+                    logger.debug(
+                        "Transcription service returned non-JSON payload from %s: %r",
+                        endpoint,
+                        response.text,
+                    )
+                    payload = {}
                 normalized = _normalize_transcription_payload(payload)
                 if normalized is not None:
                     logger.info("Transcription completed on initial request to %s", endpoint)
@@ -242,66 +263,18 @@ async def _attempt_transcription(
                     status_code=http_error.response.status_code,
                     detail=f"Transcription service error: {detail}",
                 ) from http_error
-            except (httpx.RequestError, ssl.SSLError) as request_error:
-                last_request_error = request_error
-                logger.warning(
-                    "Request to transcription service at %s failed: %s", endpoint, request_error
-                )
-                continue
-
-    if last_request_error is not None:
-        raise HTTPException(
-            status_code=502,
-            detail=(
-                "Unable to reach the transcription service. "
-                "Ensure the service is reachable over HTTP or HTTPS."
-            ),
-        ) from last_request_error
-
-    raise HTTPException(status_code=502, detail="Transcription service is unavailable.")
-
-
-def _build_transcription_endpoint(base_url: str) -> str:
-    """Return a normalized transcription endpoint with a trailing /transcribe."""
-    normalized_base = base_url.rstrip("/")
-    return f"{normalized_base}/transcribe"
-
-
-def _fallback_to_http(url: str) -> Optional[str]:
-    """Return the HTTP version of a URL if the scheme is HTTPS."""
-    parsed = urlparse(url)
-    if parsed.scheme.lower() != "https":
-        return None
-
-    return urlunparse(parsed._replace(scheme="http"))
-
-
-async def _attempt_transcription(
-    file_field: Dict[str, tuple],
-    endpoints: Iterable[str],
-) -> Dict[str, Any]:
-    """Try each endpoint until one succeeds or raise an informative HTTPException."""
-
-    last_request_error: Optional[Exception] = None
-
-    async with httpx.AsyncClient(verify=False) as client:  # Disable SSL verification for local development
-        for endpoint in endpoints:
-            try:
-                logger.info("Attempting transcription via %s", endpoint)
-                response = await client.post(endpoint, files=file_field)
-                response.raise_for_status()
-                return response.json()
-            except httpx.HTTPStatusError as http_error:
-                # The service responded but returned an error status. Surface the details immediately.
-                detail = http_error.response.text
+            except httpx.TimeoutException as timeout_error:
                 raise HTTPException(
-                    status_code=http_error.response.status_code,
-                    detail=f"Transcription service error: {detail}",
-                ) from http_error
+                    status_code=504,
+                    detail=(
+                        "Timed out while waiting for the transcription service to respond. "
+                        "Increase TRANSCRIPTION_REQUEST_TIMEOUT if longer processing is expected."
+                    ),
+                ) from timeout_error
             except (httpx.RequestError, ssl.SSLError) as request_error:
                 last_request_error = request_error
                 logger.warning(
-                    "Request to transcription service at %s failed: %s", endpoint, request_error
+                    "Request to transcription service at %s failed: %r", endpoint, request_error
                 )
                 continue
 
