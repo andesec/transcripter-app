@@ -1,8 +1,19 @@
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from .models import TranscriptionResponse
-from .services import transcribe_audio_with_huggingface, generate_summary_and_notes
+from .services import generate_summary_and_notes
 
 app = FastAPI(title="Transcriber API")
+
+# Mount static files
+app.mount("/static", StaticFiles(directory=Path(__file__).parent.parent / "static"), name="static")
+
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    with open(Path(__file__).parent.parent / "static" / "index.html") as f:
+        return HTMLResponse(content=f.read())
 
 @app.post("/summarize_and_notes", response_model=TranscriptionResponse)
 async def summarize_and_notes(
@@ -21,7 +32,3 @@ async def summarize_and_notes(
         summary=summary,
         notes=notes
     )
-
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the Transcriber API!"}

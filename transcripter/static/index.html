@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transcriber & Summarizer</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Transcriber & Summarizer</h1>
+        <p>Transform your audio into text, summaries, and notes. Powered by Hugging Face and Gemini.</p>
+
+        <div class="controls">
+            <input type="file" id="audioFile" accept="audio/wav, audio/mp3, audio/m4a">
+            <select id="category">
+                <option value="meeting">Meeting</option>
+                <option value="conversation">Conversation</option>
+                <option value="study lecture">Study Lecture</option>
+                <option value="fiction">Fiction</option>
+                <option value="think aloud">Think Aloud</option>
+            </select>
+            <button id="transcribeButton">Transcribe Audio</button>
+            <button id="summarizeButton" disabled>Generate Summary & Notes</button>
+            <button id="resetButton">Reset</button>
+        </div>
+
+        <div class="results">
+            <h2>Transcription</h2>
+            <textarea id="transcriptionOutput" rows="10" readonly></textarea>
+
+            <h2>AI-Generated Summary</h2>
+            <div id="summaryOutput"></div>
+
+            <h2>Key Notes</h2>
+            <ul id="notesOutput"></ul>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
