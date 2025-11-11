@@ -31,3 +31,5 @@ dmypy.json
 
 # Environment
 .env
+
+.idea/
