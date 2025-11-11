@@ -31,7 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function resetUI() {
-        audioFile.value = ''; // Clear file input
         categorySelect.value = 'meeting';
         transcribeButton.disabled = true;
         summarizeButton.disabled = true;
@@ -68,7 +67,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             transcribeButton.disabled = true;
         }
-        resetUI(); // Reset UI when a new file is selected
+            transcriptionOutput.value = '';
+            summaryOutput.innerHTML = '';
+            notesOutput.innerHTML = '';
+            transcribedText = "";
     });
 
     transcribeButton.addEventListener('click', async () => {
