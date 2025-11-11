@@ -28,6 +28,10 @@ TRANSCRIPTION_SERVICE_URL_BASE = os.getenv(
     "https://andenate-transcription-service.hf.space"  # Default fallback Base URL
 )
 
+@app.on_event("startup")
+async def startup_event():
+    logger.info(f"Transcription Service Base URL: {TRANSCRIPTION_SERVICE_URL_BASE}")
+
 TRANSCRIPTION_STATUS_POLL_INTERVAL = float(
     os.getenv("TRANSCRIPTION_STATUS_POLL_INTERVAL", "2.0")
 )
