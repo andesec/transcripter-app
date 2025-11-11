@@ -12,7 +12,7 @@ st.set_page_config(
 
 # --- Configuration ---
 API_URL = os.getenv("API_URL", "http://localhost:8000")
-TRANSCRIPTER_ENDPOINT = f"{API_URL}/transcribe"
+TRANSCRIPTION_SERVICE_URL = os.getenv("TRANSCRIPTION_SERVICE_URL", f"{API_URL}/transcribe")
 
 # --- UI Components ---
 def display_error(message: str, error: Exception):
@@ -69,7 +69,7 @@ def main():
                     params = {"category": category}
                     
                     st.info("Step 1/3: Uploading audio file...")
-                    response = requests.post(TRANSCRIPTER_ENDPOINT, files=files, data=params, timeout=300)
+                    response = requests.post(TRANSCRIPTION_SERVICE_URL, files=files, data=params, timeout=300)
                     
                     st.info("Step 2/3: Analyzing response...")
                     response.raise_for_status()
