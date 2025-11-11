@@ -75,7 +75,7 @@ def main():
     if transcribe_button and st.session_state.uploaded_file is not None:
         with st.spinner("🚀 Launching the AI magic... Please wait."):
             try:
-                files = {"audio_file": (st.session_state.uploaded_file.name, st.session_state.uploaded_file, st.session_state.uploaded_file.type)}
+                files = {"file": (st.session_state.uploaded_file.name, st.session_state.uploaded_file, st.session_state.uploaded_file.type)}
                 
                 st.info("Step 1/3: Uploading audio file and transcribing...")
                 
