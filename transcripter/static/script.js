@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = audioFile.files[0];
         if (file) {
             // Client-side file type validation
-            const allowedTypes = ['audio/wav', 'audio/mpeg', 'audio/x-m4a']; // mp3 is audio/mpeg, m4a can be audio/x-m4a or audio/mp4
+            const allowedTypes = ['audio/wav', 'audio/mpeg', 'audio/x-m4a', 'audio/mp4', 'audio/vnd.wav', 'audio/aac']; // mp3 is audio/mpeg, m4a can be audio/x-m4a or audio/mp4, also added audio/vnd.wav for broader WAV support and audio/aac for m4a
             if (!allowedTypes.includes(file.type)) {
                 showNotification('Invalid file type. Please upload WAV, MP3, or M4A.', 'error');
                 audioFile.value = ''; // Clear selected file
