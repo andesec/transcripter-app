@@ -61,7 +61,8 @@ async def transcribe_and_summarize(
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 TRANSCRIPTION_SERVICE_URL,
-                files={"file": (file.filename, audio_content, file.content_type)}
+                files={"file": (file.filename, audio_content, file.content_type)},
+                verify=False # Disable SSL verification for local development
             )
             response.raise_for_status() # Raise an exception for HTTP errors
             transcription_data = response.json()
