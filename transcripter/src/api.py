@@ -12,9 +12,9 @@ app = FastAPI(title="Transcriber API")
 # Mount static files
 app.mount("/static", StaticFiles(directory=Path(__file__).parent.parent / "static"), name="static")
 
-TRANSCRIPTION_SERVICE_URL = os.getenv(
+TRANSCRIPTION_SERVICE_URL_BASE = os.getenv(
     "TRANSCRIPTION_SERVICE_URL",
-    "https://andenate-transcription-service.hf.space/transcribe" # Default fallback URL
+    "https://andenate-transcription-service.hf.space" # Default fallback Base URL
 )
 
 @app.get("/", response_class=HTMLResponse)
@@ -59,8 +59,9 @@ async def transcribe_and_summarize(
         
         # Forward the audio file to the external transcription service
         async with httpx.AsyncClient(verify=False) as client: # Disable SSL verification for local development
+            transcription_endpoint = f"{TRANSCRIPTION_SERVICE_URL_BASE}/transcribe"
             response = await client.post(
-                TRANSCRIPTION_SERVICE_URL,
+                transcription_endpoint,
                 files={"file": (file.filename, audio_content, file.content_type)}
             )
             response.raise_for_status() # Raise an exception for HTTP errors
