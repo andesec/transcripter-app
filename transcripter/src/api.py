@@ -1,11 +1,20 @@
+import logging
 import os
+import ssl
+from pathlib import Path
+from typing import Optional
+from urllib.parse import urlparse, urlunparse
+
 import httpx
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from pathlib import Path
+
 from .models import TranscriptionResponse
 from .services import generate_summary_and_notes
+
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Transcriber API")
 
@@ -14,8 +23,23 @@ app.mount("/static", StaticFiles(directory=Path(__file__).parent.parent / "stati
 
 TRANSCRIPTION_SERVICE_URL_BASE = os.getenv(
     "TRANSCRIPTION_SERVICE_URL",
-    "https://andenate-transcription-service.hf.space" # Default fallback Base URL
+    "https://andenate-transcription-service.hf.space"  # Default fallback Base URL
 )
+
+
+def _build_transcription_endpoint(base_url: str) -> str:
+    """Return a normalized transcription endpoint with a trailing /transcribe."""
+    normalized_base = base_url.rstrip("/")
+    return f"{normalized_base}/transcribe"
+
+
+def _fallback_to_http(url: str) -> Optional[str]:
+    """Return the HTTP version of a URL if the scheme is HTTPS."""
+    parsed = urlparse(url)
+    if parsed.scheme.lower() != "https":
+        return None
+
+    return urlunparse(parsed._replace(scheme="http"))
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
@@ -56,31 +80,35 @@ async def transcribe_audio(
     try:
         print(1)
         audio_content = await file.read()
-        print(2)
+
+        transcription_endpoint = _build_transcription_endpoint(TRANSCRIPTION_SERVICE_URL_BASE)
+
         # Forward the audio file to the external transcription service
-        async with httpx.AsyncClient(verify=False) as client: # Disable SSL verification for local development
-            transcription_endpoint = f"{TRANSCRIPTION_SERVICE_URL_BASE}/transcribe"
-            print(f"2.1: Attempting to post to {transcription_endpoint}")
+        async with httpx.AsyncClient(verify=False) as client:  # Disable SSL verification for local development
             try:
                 response = await client.post(
                     transcription_endpoint,
-                    files={"file": (file.filename, audio_content, file.content_type)},
-                    timeout=30.0 # Add a timeout to prevent indefinite hanging
+                    files={"file": (file.filename, audio_content, file.content_type)}
                 )
-                print(f"2.2: Received response status: {response.status_code}")
-            except httpx.RequestError as req_err:
-                raise HTTPException(status_code=500, detail=f"Transcription service request failed: {req_err}")
-            except Exception as req_exc:
-                raise HTTPException(status_code=500, detail=f"An unexpected error during transcription request: {req_exc}")
-            print(3)
-            response.raise_for_status() # Raise an exception for HTTP errors
-            print(4)
-            try:
-                transcription_data = response.json()
-                print(5, transcription_data)
-            except json.JSONDecodeError:
-                raise HTTPException(status_code=500, detail="Transcription service returned invalid JSON.")
-            print(6)
+                response.raise_for_status()  # Raise an exception for HTTP errors
+            except (httpx.UnsupportedProtocol, httpx.LocalProtocolError, ssl.SSLError) as protocol_error:
+                fallback_endpoint = _fallback_to_http(transcription_endpoint)
+                if not fallback_endpoint:
+                    raise protocol_error
+
+                logger.warning(
+                    "HTTPS request to %s failed (%s). Retrying over HTTP at %s.",
+                    transcription_endpoint,
+                    protocol_error,
+                    fallback_endpoint,
+                )
+                response = await client.post(
+                    fallback_endpoint,
+                    files={"file": (file.filename, audio_content, file.content_type)}
+                )
+                response.raise_for_status()
+
+            transcription_data = response.json()
             transcribed_text = transcription_data.get("transcription")
             print(7, transcribed_text)
         if not transcribed_text:
