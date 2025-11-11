@@ -9,5 +9,4 @@ services:
       - "8000:8000" # API will also be available on host port 8000
     environment:
       - GEMINI_API_KEY=YOUR_API_KEY_HERE # Replace with your actual Gemini API key
-      # The TRANSCRIPTION_SERVICE_URL is now used by the JavaScript frontend directly.
-      # Ensure it's set correctly in the JavaScript or passed via a meta tag if needed.
+      - TRANSCRIPTION_SERVICE_URL=https://transcription-service.transcription-service.orb.local
