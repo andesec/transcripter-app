@@ -21,4 +21,4 @@ EXPOSE 8501
 EXPOSE 8000
 
 # Command to run the application
-CMD ["python", "-m", "src.main"]
+# CMD ["python", "-m", "src.main"]

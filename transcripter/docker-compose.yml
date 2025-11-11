@@ -1,12 +1,25 @@
-version: "3.8"
+version: '3.8'
 
 services:
-  app:
+  fastapi_app:
     build: .
+    command: uvicorn src.api:app --host 0.0.0.0 --port 8000
     ports:
-      - "80:80"
       - "8000:8000"
     environment:
-      - GEMINI_API_KEY=YOUR_API_KEY_HERE
-      # Uncomment and set the following to use an external transcription service, e.g., Hugging Face
-      - TRANSCRIPTION_SERVICE_URL=https://andenate-transcription-service.hf.space
+      - GEMINI_API_KEY=YOUR_API_KEY_HERE # Replace with your actual Gemini API key
+    # If you want to use the Hugging Face service for transcription, you can uncomment and set the following:
+    # - TRANSCRIPTION_SERVICE_URL=https://andenate-transcription-service.hf.space
+
+  streamlit_app:
+    build: .
+    command: streamlit run src/ui.py --server.port=80 --server.address=0.0.0.0
+    ports:
+      - "80:80" # Streamlit UI will be available on host port 80
+    environment:
+      - API_URL=http://fastapi_app:8000 # Streamlit connects to the FastAPI service
+      - GEMINI_API_KEY=YOUR_API_KEY_HERE # Replace with your actual Gemini API key
+      # If you want to use the Hugging Face service for transcription, you can uncomment and set the following:
+      # - TRANSCRIPTION_SERVICE_URL=https://andenate-transcription-service.hf.space
+    depends_on:
+      - fastapi_app
