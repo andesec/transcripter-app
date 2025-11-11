@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('file', file);
 
         try {
-            const response = await fetch('https://andenate-transcription-service.hf.space/transcribe', {
+            const response = await fetch(window.TRANSCRIPTION_SERVICE_URL, {
                 method: 'POST',
                 body: formData,
             });

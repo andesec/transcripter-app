@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -10,10 +11,23 @@ app = FastAPI(title="Transcriber API")
 # Mount static files
 app.mount("/static", StaticFiles(directory=Path(__file__).parent.parent / "static"), name="static")
 
+TRANSCRIPTION_SERVICE_URL_PLACEHOLDER = "__TRANSCRIPTION_SERVICE_URL_PLACEHOLDER__"
+
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
-    with open(Path(__file__).parent.parent / "static" / "index.html") as f:
-        return HTMLResponse(content=f.read())
+    transcription_service_url = os.getenv(
+        "TRANSCRIPTION_SERVICE_URL",
+        "https://andenate-transcription-service.hf.space/transcribe" # Default fallback URL
+    )
+    
+    index_html_path = Path(__file__).parent.parent / "static" / "index.html"
+    with open(index_html_path, "r") as f:
+        html_content = f.read()
+    
+    # Replace the placeholder with the actual URL
+    html_content = html_content.replace(TRANSCRIPTION_SERVICE_URL_PLACEHOLDER, transcription_service_url)
+    
+    return HTMLResponse(content=html_content)
 
 @app.post("/summarize_and_notes", response_model=TranscriptionResponse)
 async def summarize_and_notes(
