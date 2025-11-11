@@ -130,11 +130,17 @@ def main():
             except Exception as e:
                 display_error("An unexpected error occurred", e)
 
-    if st.session_state.results:
-        display_results(st.session_state.results)
-    elif st.session_state.transcription:
+    if st.session_state.transcription:
         st.subheader("📝 Transcription")
         st.text_area("Full transcription text", st.session_state.transcription, height=250)
+
+    if st.session_state.results:
+        st.subheader("✨ AI-Generated Summary")
+        st.markdown(st.session_state.results["summary"])
+        
+        st.subheader("📌 Key Notes")
+        for note in st.session_state.results["notes"]:
+            st.markdown(f"- {note}")
 
 if __name__ == "__main__":
     main()
