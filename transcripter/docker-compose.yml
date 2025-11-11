@@ -1,12 +1,12 @@
-version: '3.8'
+version: "3.8"
 
 services:
   app:
     build: .
     ports:
-      - "80:8501"
+      - "80:80"
       - "8000:8000"
     environment:
       - GEMINI_API_KEY=YOUR_API_KEY_HERE
       # Uncomment and set the following to use an external transcription service, e.g., Hugging Face
-      # - TRANSCRIPTION_SERVICE_URL=https://andenate-transcription-service.hf.space/transcribe
+      - TRANSCRIPTION_SERVICE_URL=https://andenate-transcription-service.hf.space

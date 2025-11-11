@@ -16,7 +16,7 @@ def run_streamlit():
         "streamlit",
         "run",
         "src/ui.py",
-        "--server.port=8501",
+        "--server.port=80",
         "--server.address=0.0.0.0"
     ]
     subprocess.run(command)
