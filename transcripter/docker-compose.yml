@@ -18,8 +18,6 @@ services:
       - "80:80" # Streamlit UI will be available on host port 80
     environment:
       - API_URL=http://fastapi_app:8000 # Streamlit connects to the FastAPI service
-      - GEMINI_API_KEY=YOUR_API_KEY_HERE # Replace with your actual Gemini API key
-      # If you want to use the Hugging Face service for transcription, you can uncomment and set the following:
-      # - TRANSCRIPTION_SERVICE_URL=https://andenate-transcription-service.hf.space
+      - TRANSCRIPTION_SERVICE_URL=https://andenate-transcription-service.hf.space/transcribe
     depends_on:
       - fastapi_app

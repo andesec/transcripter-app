@@ -72,9 +72,6 @@ def main():
             st.session_state.clear()
             st.experimental_rerun()
 
-    # Determine if an external transcription service is configured
-    is_external_transcription_service = TRANSCRIPTION_SERVICE_URL.startswith("http") and "fastapi_app" not in TRANSCRIPTION_SERVICE_URL
-
     if transcribe_button and st.session_state.uploaded_file is not None:
         with st.spinner("🚀 Launching the AI magic... Please wait."):
             try:
@@ -82,27 +79,17 @@ def main():
                 
                 st.info("Step 1/3: Uploading audio file and transcribing...")
                 
-                if is_external_transcription_service:
-                    # Call external transcription service directly
-                    response = requests.post(TRANSCRIPTION_SERVICE_URL, files=files, timeout=300)
-                else:
-                    # Call local FastAPI for transcription
-                    response = requests.post(f"{API_URL}/transcribe", files=files, data={"category": st.session_state.category}, timeout=300)
+                # Always call the configured TRANSCRIPTION_SERVICE_URL for transcription
+                response = requests.post(TRANSCRIPTION_SERVICE_URL, files=files, timeout=300)
                 
                 response.raise_for_status()
                 
                 st.info("Step 2/3: Analyzing response...")
                 data = response.json()
                 
-                if is_external_transcription_service:
-                    # If external service, it only returns transcription
-                    st.session_state.transcription = data.get("transcription", "")
-                    st.success("✅ Transcription complete! Now generate summary and notes.")
-                else:
-                    # If local FastAPI, it returns transcription, summary, and notes
-                    st.session_state.transcription = data.get("transcription", "")
-                    st.session_state.results = data
-                    st.success("✅ Transcription, summary, and notes complete!")
+                # Assume external service always returns transcription
+                st.session_state.transcription = data.get("transcription", "")
+                st.success("✅ Transcription complete! Now generate summary and notes.")
                 
                 st.toast("Processing complete!", icon="🎉")
 
@@ -110,11 +97,11 @@ def main():
                 display_error("The request timed out after 5 minutes", e)
             except requests.exceptions.HTTPError as e:
                 if e.response.status_code == 422:
-                    display_error("The AI service failed to process the content", e)
+                    display_error("The transcription service failed to process the content", e)
                 else:
                     display_error(f"A server error occurred (Code: {e.response.status_code})", e)
             except requests.exceptions.RequestException as e:
-                display_error("Failed to connect to the backend service", e)
+                display_error("Failed to connect to the transcription service", e)
             except Exception as e:
                 display_error("An unexpected error occurred", e)
 
