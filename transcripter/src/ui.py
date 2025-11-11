@@ -46,7 +46,8 @@ def main():
         st.header("Controls")
         uploaded_file = st.file_uploader(
             "Upload your audio file",
-            type=["wav", "mp3", "m4a", "ogg", "flac"]
+            type=["wav", "mp3", "m4a", "ogg", "flac"],
+            max_upload_size=10 # Limit to 10 MB
         )
         category = st.selectbox(
             "Select the audio category",
@@ -54,6 +55,11 @@ def main():
             help="Select the category that best describes your audio to get a better summary."
         )
         submit_button = st.button("Generate Insights", type="primary")
+
+        st.markdown("---")
+        if st.button("Reset"):
+            st.session_state.clear()
+            st.experimental_rerun()
 
     if submit_button:
         if uploaded_file is not None:
