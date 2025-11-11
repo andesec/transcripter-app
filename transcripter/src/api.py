@@ -356,4 +356,5 @@ async def transcribe_audio(
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=e.response.status_code, detail=f"Transcription service error: {e.response.text}")
     except Exception as e:
+        logger.exception("An unexpected error occurred during audio transcription.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
