@@ -54,26 +54,38 @@ async def transcribe_audio(
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload an audio file.")
 
     try:
+        print(1)
         audio_content = await file.read()
-        
+        print(2)
         # Forward the audio file to the external transcription service
         async with httpx.AsyncClient(verify=False) as client: # Disable SSL verification for local development
             transcription_endpoint = f"{TRANSCRIPTION_SERVICE_URL_BASE}/transcribe"
-            response = await client.post(
-                transcription_endpoint,
-                files={"file": (file.filename, audio_content, file.content_type)}
-            )
+            print(f"2.1: Attempting to post to {transcription_endpoint}")
+            try:
+                response = await client.post(
+                    transcription_endpoint,
+                    files={"file": (file.filename, audio_content, file.content_type)},
+                    timeout=30.0 # Add a timeout to prevent indefinite hanging
+                )
+                print(f"2.2: Received response status: {response.status_code}")
+            except httpx.RequestError as req_err:
+                raise HTTPException(status_code=500, detail=f"Transcription service request failed: {req_err}")
+            except Exception as req_exc:
+                raise HTTPException(status_code=500, detail=f"An unexpected error during transcription request: {req_exc}")
+            print(3)
             response.raise_for_status() # Raise an exception for HTTP errors
+            print(4)
             try:
                 transcription_data = response.json()
+                print(5, transcription_data)
             except json.JSONDecodeError:
                 raise HTTPException(status_code=500, detail="Transcription service returned invalid JSON.")
-            
+            print(6)
             transcribed_text = transcription_data.get("transcription")
-
+            print(7, transcribed_text)
         if not transcribed_text:
             raise HTTPException(status_code=500, detail="Transcription service did not return text.")
-
+        print(8)
         return {"transcription": transcribed_text}
 
     except httpx.HTTPStatusError as e:
