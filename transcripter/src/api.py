@@ -42,14 +42,13 @@ async def summarize_and_notes(
         notes=notes
     )
 
-@app.post("/transcribe_and_summarize", response_model=TranscriptionResponse)
-async def transcribe_and_summarize(
-    file: UploadFile = File(...),
-    category: str = Form(...)
+@app.post("/transcribe_audio")
+async def transcribe_audio(
+    file: UploadFile = File(...)
 ):
     """
-    Receives an audio file, transcribes it using an external service,
-    then generates a summary and notes based on the transcription.
+    Receives an audio file and transcribes it using an external service.
+    Returns the transcribed text.
     """
     if not file.content_type.startswith("audio/"):
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload an audio file.")
@@ -75,15 +74,8 @@ async def transcribe_and_summarize(
         if not transcribed_text:
             raise HTTPException(status_code=500, detail="Transcription service did not return text.")
 
-        summary, notes = generate_summary_and_notes(transcribed_text, category)
-        if not summary or not notes:
-            raise HTTPException(status_code=422, detail="AI service failed to generate summary and notes.")
+        return {"transcription": transcribed_text}
 
-        return TranscriptionResponse(
-            transcription=transcribed_text,
-            summary=summary,
-            notes=notes
-        )
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=e.response.status_code, detail=f"Transcription service error: {e.response.text}")
     except Exception as e:
