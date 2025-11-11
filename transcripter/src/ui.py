@@ -46,7 +46,7 @@ def main():
         st.header("Controls")
         uploaded_file = st.file_uploader(
             "Upload your audio file",
-            type=["wav", "mp3", "m4a", "ogg", "flac"],
+            type=["wav", "mp3", "m4a"],
             max_upload_size=10 # Limit to 10 MB
         )
         category = st.selectbox(
