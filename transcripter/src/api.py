@@ -58,11 +58,10 @@ async def transcribe_and_summarize(
         audio_content = await file.read()
         
         # Forward the audio file to the external transcription service
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(verify=False) as client: # Disable SSL verification for local development
             response = await client.post(
                 TRANSCRIPTION_SERVICE_URL,
-                files={"file": (file.filename, audio_content, file.content_type)},
-                verify=False # Disable SSL verification for local development
+                files={"file": (file.filename, audio_content, file.content_type)}
             )
             response.raise_for_status() # Raise an exception for HTTP errors
             transcription_data = response.json()
