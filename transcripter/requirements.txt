@@ -3,5 +3,6 @@ uvicorn
 python-multipart
 requests
 google-generativeai
+httpx
 
 uv
